@@ -32,19 +32,19 @@ char* get_item_name(int id)
         case 9:
             return "Картошка";
         default:
-            return "Такого элемента нет";
+            return "NULL";
     }
 }
 
 void print_menu(void)
 {
-    printf("[0] Выход\n");
+    printf("\n[0] Выход\n");
     printf("[1] Посмотреть на часы\n");
     printf("[2] Промотать время\n");
     printf("[3] Посмотреть инвентарь\n");
     printf("[4] Положить предмет в слот\n");
     printf("[5] Выбросить предмет\n");
-    printf("[6] Просмотр любимого ресурса\n");
+    printf("[6] Просмотр любимого ресурса\n\n");
 }
 
 void clear_buffer(void)
@@ -110,7 +110,7 @@ void forward_time(void)
                 current_hour -= 24;
                 current_day++;
             }
-            printf("Промотано %d\n", response);
+            printf("Промотано %d час(а)\n", response);
             check_time();
             return;
         }
@@ -128,7 +128,8 @@ void check_inventory(void)
 
 void put_item()
 {
-    printf("В какой слот положить предмет? (отсчет с 0 до 9)\n");
+    printf("В какой слот положить предмет?\n\n");
+    check_inventory();
     while (1)
     {
         int slot = read_input(1);
@@ -141,7 +142,7 @@ void put_item()
             printf("Какой предмет положить?\n\n");
             for (int i = 0; i < INVENTORY_SIZE; i++)
             {
-                printf("%d - %s\n", i, get_item_name(inventory[i]));
+                printf("%d - %s\n", i, get_item_name(i));
             }
             while (1)
             {
@@ -153,7 +154,7 @@ void put_item()
                 else
                 {
                     inventory[slot] = item;
-                    printf("Слот заменен\n");
+                    printf("Слот заменен!\n\n");
                     return;
                 }
             }
@@ -175,19 +176,50 @@ void delete_item(void)
         else
         {     
           inventory[slot] = 0;
-          printf("Предмет выброшен!\n");
+          printf("Предмет выброшен!\n\n");
           return;         
         }
     }
+}
+
+void favorite_resource(void) 
+{ 
+    int count[INVENTORY_SIZE] = { 0 }; 
+    int favorite_id = 0; 
+    int max_count = 0; 
+    for (int i = 0; i < INVENTORY_SIZE; i++) 
+    { 
+        if (inventory[i] != 0) 
+        { 
+            count[inventory[i]]++; 
+        } 
+    } 
+    for (int i = 1; i < INVENTORY_SIZE; i++) 
+    { 
+        if (count[i] > max_count)
+        { 
+            max_count = count[i];
+            favorite_id = i;
+        } 
+    } 
+    if (max_count == 0)
+    { 
+        printf("Инвентарь пуст\n\n"); 
+    } 
+    else 
+    { 
+        printf("Любимый ресурс: %d - %s, он встречается %d раз(а)\n\n", favorite_id, get_item_name(favorite_id), max_count);
+        return;
+    } 
 }
 
 int main()
 {
     SetConsoleCP(CP_UTF8); // del on linux
     SetConsoleOutputCP(CP_UTF8); // ^
-    print_menu();
 	while (1)
-	{
+	{       
+        print_menu();
         int response = read_input(0);
         switch (response)
         {
@@ -210,6 +242,7 @@ int main()
             delete_item();
             break;
         case 6: 
+            favorite_resource();
             break;
         default: 
             printf("Введите не отрицательное целое число меньше 7\n");
