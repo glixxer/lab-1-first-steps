@@ -5,6 +5,7 @@
 #define INVENTORY_SIZE 10
 int current_day = 1;
 int current_hour = 8;
+int inventory[INVENTORY_SIZE] = { 0, 1, 2, 3, 3, 3, 5, 6, 4, 7 };
 
 char* get_item_name(int id)
 {
@@ -118,14 +119,72 @@ void forward_time(void)
 
 void check_inventory(void)
 {
+    for (int item = 0; item < INVENTORY_SIZE; item++)
+    {
+        printf("Слот %d: [%d] (%s)\n", item, inventory[item], get_item_name(inventory[item]));
+    }
+    return;
+}
 
+void put_item()
+{
+    printf("В какой слот положить предмет? (отсчет с 0 до 9)\n");
+    while (1)
+    {
+        int slot = read_input(1);
+        if (slot < 0 || slot > 9)
+        {
+            printf("Слот выходит за границы!\n");
+        }
+        else
+        {
+            printf("Какой предмет положить?\n\n");
+            for (int i = 0; i < INVENTORY_SIZE; i++)
+            {
+                printf("%d - %s\n", i, get_item_name(inventory[i]));
+            }
+            while (1)
+            {
+                int item = read_input(1);
+                if (item < 0 || item > 9)
+                {
+                    printf("Предмет выходит за границы!\n");
+                }
+                else
+                {
+                    inventory[slot] = item;
+                    printf("Слот заменен\n");
+                    return;
+                }
+            }
+        }
+    }
+}
+
+void delete_item(void)
+{
+    printf("Какой слот выбросить?\n");
+    check_inventory();
+    while (1)
+    {
+        int slot = read_input(1);
+        if (slot > 9 || slot < 0)
+        {
+            printf("Слот выходит за границы!\n");
+        }
+        else
+        {     
+          inventory[slot] = 0;
+          printf("Предмет выброшен!\n");
+          return;         
+        }
+    }
 }
 
 int main()
 {
     SetConsoleCP(CP_UTF8); // del on linux
     SetConsoleOutputCP(CP_UTF8); // ^
-    int inventory[INVENTORY_SIZE] = {0, 1, 2, 3, 3, 3, 5, 6, 4, 7};
     print_menu();
 	while (1)
 	{
@@ -134,7 +193,7 @@ int main()
         {
         case 0: 
             printf("Выход из программы\n");
-            return;
+            return 0;
         case 1:
             check_time();
             break;
@@ -142,12 +201,15 @@ int main()
             forward_time();
             break;
         case 3:
+            check_inventory();
             break;
         case 4:
+            put_item();
             break;
         case 5:
+            delete_item();
             break;
-        case 6:
+        case 6: 
             break;
         default: 
             printf("Введите не отрицательное целое число меньше 7\n");
