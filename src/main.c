@@ -3,20 +3,10 @@
 
 #define _CRT_SECURE_NO_WARNINGS // ))))
 #define INVENTORY_SIZE 10
-/*
-#define EMPTY 0
-#define WOOD 1
-#define STONE 2
-#define SEED 3
-#define WCAN 4
-#define HOE 5
-#define FERT 6
-#define WHEAT 7
-#define CARROT 8
-#define POTATO 9
-*/
+int current_day = 1;
+int current_hour = 8;
 
-char get_item_name(int id)
+char* get_item_name(int id)
 {
     switch (id)
     {
@@ -60,34 +50,96 @@ void clear_buffer(void)
 {
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
+    return;
 }
 
-int main(void)
+int read_input(int err) // 1 - с ошибкой для дебила, 0 - без ошибки
+{
+    while (1)
+    {
+        int response = -1;
+        int res_check = scanf("%d", &response);
+        if (res_check != 1 && err)
+        {
+            printf("Введите целое число!\n");
+            clear_buffer();
+        }
+        else
+        {
+            clear_buffer();
+            return response;
+        }
+    } 
+}
+
+void clear_console(void)
+{
+    printf("\033[H\033[J");
+    return;
+}
+
+void check_time(void)
+{
+    if (current_hour < 10)
+    {
+        printf("Текущее время: День %d, 0%d:00\n", current_day, current_hour);
+    }
+    else
+    {
+        printf("Текущее время: День %d, %d:00\n", current_day, current_hour);
+    }
+    return;
+}
+
+void forward_time(void)
+{
+    printf("Сколько часов перемотать?\n");
+    while (1)
+    {
+        int response = read_input(1);
+        if (response > 120)
+        {
+            printf("Больше 4 дней перемотать нельзя!\n");
+        }
+        else
+        {
+            current_hour += response;
+            while (current_hour >= 24)
+            {
+                current_hour -= 24;
+                current_day++;
+            }
+            printf("Промотано %d\n", response);
+            check_time();
+            return;
+        }
+    }
+}
+
+void check_inventory(void)
+{
+
+}
+
+int main()
 {
     SetConsoleCP(CP_UTF8); // del on linux
     SetConsoleOutputCP(CP_UTF8); // ^
-	int current_day = 1;
-	int current_hour = 8;
-    int response = -1;
     int inventory[INVENTORY_SIZE] = {0, 1, 2, 3, 3, 3, 5, 6, 4, 7};
     print_menu();
 	while (1)
 	{
-        int res_check = scanf_s("%d",&response);
-        if (res_check != 1)
-        {
-            printf("Введите целое число!\n");
-        }
-        clear_buffer();
-        
+        int response = read_input(0);
         switch (response)
         {
         case 0: 
             printf("Выход из программы\n");
             return;
         case 1:
+            check_time();
             break;
         case 2:
+            forward_time();
             break;
         case 3:
             break;
@@ -97,6 +149,8 @@ int main(void)
             break;
         case 6:
             break;
+        default: 
+            printf("Введите не отрицательное целое число меньше 7\n");
         }
 	}
 	return 0;
