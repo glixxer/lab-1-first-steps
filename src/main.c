@@ -1,7 +1,9 @@
 #include <stdio.h>
 #ifdef _WIN32
-#include <Windows.h> 
-#define _CRT_SECURE_NO_WARNINGS
+    #include <Windows.h> 
+    #define _CRT_SECURE_NO_WARNINGS
+#else
+    #include <locale.h>
 #endif
 
 #define INVENTORY_SIZE 10
@@ -47,6 +49,8 @@ int main()
 #ifdef _WIN32
     SetConsoleCP(CP_UTF8); 
     SetConsoleOutputCP(CP_UTF8); 
+#else
+    setlocale(LC_ALL, "");
 #endif
 
     while (1)
