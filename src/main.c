@@ -1,11 +1,87 @@
 #include <stdio.h>
-#include <Windows.h> //del on linux
+#ifdef _WIN32
+#include <Windows.h> 
+#define _CRT_SECURE_NO_WARNINGS
+#endif
 
-#define _CRT_SECURE_NO_WARNINGS // ))))
 #define INVENTORY_SIZE 10
+#define EMPTY 0
+#define WOOD 1
+#define STONE 2
+#define SEEDS 3
+#define WATERING_CAN 4
+#define HOE 5
+#define FERTILIZER 6
+#define WHEAT 7
+#define CARROT 8
+#define POTATO 9
+
 int current_day = 1;
 int current_hour = 8;
-int inventory[INVENTORY_SIZE] = { 0, 1, 2, 3, 3, 3, 5, 6, 4, 7 };
+int inventory[INVENTORY_SIZE] = { 
+    EMPTY,
+    WOOD,
+    STONE,
+    SEEDS,
+    SEEDS,
+    SEEDS,
+    HOE,
+    FERTILIZER,
+    WATERING_CAN,
+    WHEAT
+};
+
+char* get_item_name(int id);
+void print_menu(void);
+void clear_buffer(void);
+int read_input(int err);
+void check_time(void);
+void forward_time(void);
+void check_inventory(void);
+void put_item(void);
+void delete_item(void);
+void favorite_resource(void);
+
+int main()
+{
+#ifdef _WIN32
+    SetConsoleCP(CP_UTF8); 
+    SetConsoleOutputCP(CP_UTF8); 
+#endif
+
+    while (1)
+    {
+        print_menu();
+        int response = read_input(0);
+        switch (response)
+        {
+        case 0:
+            printf("Выход из программы\n");
+            return 0;
+        case 1:
+            check_time();
+            break;
+        case 2:
+            forward_time();
+            break;
+        case 3:
+            check_inventory();
+            break;
+        case 4:
+            put_item();
+            break;
+        case 5:
+            delete_item();
+            break;
+        case 6:
+            favorite_resource();
+            break;
+        default:
+            printf("Введите не отрицательное целое число меньше 7\n");
+        }
+    }
+    return 0;
+}
 
 char* get_item_name(int id)
 {
@@ -73,22 +149,9 @@ int read_input(int err) // 1 - с ошибкой для дебила, 0 - без
     } 
 }
 
-void clear_console(void)
-{
-    printf("\033[H\033[J");
-    return;
-}
-
 void check_time(void)
 {
-    if (current_hour < 10)
-    {
-        printf("Текущее время: День %d, 0%d:00\n", current_day, current_hour);
-    }
-    else
-    {
-        printf("Текущее время: День %d, %d:00\n", current_day, current_hour);
-    }
+    printf("Текущее время: День %d, %02d:00\n", current_day, current_hour);
     return;
 }
 
@@ -98,9 +161,9 @@ void forward_time(void)
     while (1)
     {
         int response = read_input(1);
-        if (response > 120)
+        if (response < 0)
         {
-            printf("Больше 4 дней перемотать нельзя!\n");
+            printf("Количество часов не может быть отрицательным!\n");
         }
         else
         {
@@ -126,7 +189,7 @@ void check_inventory(void)
     return;
 }
 
-void put_item()
+void put_item(void)
 {
     printf("В какой слот положить предмет?\n\n");
     check_inventory();
@@ -211,42 +274,4 @@ void favorite_resource(void)
         printf("Любимый ресурс: %d - %s, он встречается %d раз(а)\n\n", favorite_id, get_item_name(favorite_id), max_count);
         return;
     } 
-}
-
-int main()
-{
-    SetConsoleCP(CP_UTF8); // del on linux
-    SetConsoleOutputCP(CP_UTF8); // ^
-	while (1)
-	{       
-        print_menu();
-        int response = read_input(0);
-        switch (response)
-        {
-        case 0: 
-            printf("Выход из программы\n");
-            return 0;
-        case 1:
-            check_time();
-            break;
-        case 2:
-            forward_time();
-            break;
-        case 3:
-            check_inventory();
-            break;
-        case 4:
-            put_item();
-            break;
-        case 5:
-            delete_item();
-            break;
-        case 6: 
-            favorite_resource();
-            break;
-        default: 
-            printf("Введите не отрицательное целое число меньше 7\n");
-        }
-	}
-	return 0;
 }
