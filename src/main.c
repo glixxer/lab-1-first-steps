@@ -1,11 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
 #ifdef _WIN32
     #include <Windows.h> 
     #define _CRT_SECURE_NO_WARNINGS
+    #pragma warning(disable : 4996)
 #else
     #include <locale.h>
 #endif
 
+#define MAX_NAME_LENGTH 33
+
+#define MAX_ITEMS 10
+#define MAX_NAME_LEN 32
 #define INVENTORY_SIZE 10
 #define EMPTY 0
 #define WOOD 1
@@ -18,8 +27,10 @@
 #define CARROT 8
 #define POTATO 9
 
+char farmer_name[MAX_NAME_LENGTH];
 int current_day = 1;
 int current_hour = 8;
+char item_names[MAX_ITEMS][MAX_NAME_LEN] = { 0 };
 int inventory[INVENTORY_SIZE] = { 
     EMPTY,
     WOOD,
@@ -43,6 +54,8 @@ void check_inventory(void);
 void put_item(void);
 void delete_item(void);
 void favorite_resource(void);
+void get_farmer_name(void);
+int load_inventory(void);
 
 int main()
 {
@@ -52,7 +65,17 @@ int main()
 #else
     setlocale(LC_ALL, "");
 #endif
+    get_farmer_name();
+    printf("Привет, %s! Добро пожаловать в игру!\n", farmer_name);
 
+    if (load_inventory())
+    {
+        for (int i = 0; i < INVENTORY_SIZE; i++)
+        {
+            inventory[i] = item_names[i][0];
+        }
+    }
+    
     while (1)
     {
         print_menu();
@@ -79,6 +102,15 @@ int main()
             break;
         case 6:
             favorite_resource();
+            break;
+        case 7:
+            
+            break;
+        case 8:
+            
+            break;
+        case 9:
+            
             break;
         default:
             printf("Введите не отрицательное целое число меньше 7\n");
@@ -279,3 +311,82 @@ void favorite_resource(void)
         return;
     } 
 }
+
+void get_farmer_name(void)
+{
+    char input[256];
+    while (1)
+    {
+        printf("Введите имя персонажа: \n");
+        if (fgets(input, sizeof(input), stdin) == NULL)
+        {
+            printf("Ошибка ввода. Повторите попытку.\n");
+            continue;
+        }
+
+        size_t len = strlen(input);
+        if (len > 0 && input[len - 1] == '\n')
+        {
+            input[len - 1] = '\0';
+            len--;
+        }
+        else
+        {
+            int ch;
+            int overflow = 0;
+            while ((ch = getchar()) != '\n' && ch != EOF)
+            {
+                overflow = 1;
+            }
+            if (overflow)
+            {
+                printf("Имя слишком длинное. Максимум %d символов.\n", MAX_NAME_LENGTH - 1);
+                continue;
+            }
+        }
+
+        if (len == 0)
+        {
+            printf("Имя не может быть пустым. Попробуйте ещё раз.\n");
+            continue;
+        }
+
+        if (len > MAX_NAME_LENGTH - 1)
+        {
+            printf("Имя слишком длинное. Максимум %d символов.\n", MAX_NAME_LENGTH - 1);
+            continue;
+        }
+
+        strncpy(farmer_name, input, len + 1);
+        return;
+    }
+}
+
+int load_inventory(void)
+{
+    FILE* file = fopen("items.txt", "r");
+    if (file == NULL)
+    {
+        printf("Файл items.txt не найден.\n Используется инвентарь по умолчанию.\n");
+        return 0;
+    }
+    char line[MAX_NAME_LEN];
+    int loaded = 0;
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        int id;
+        char name[MAX_NAME_LEN];
+
+        sscanf(line, "%d %s", &id, name);
+        item_names[loaded][0] = id;
+        for (int i = 1; i < MAX_NAME_LEN + 1; i++)
+        {
+            item_names[loaded][i] = name[i - 1];
+        }
+        loaded++;
+    }
+    fclose(file);
+    return 1;
+}
+
+//
