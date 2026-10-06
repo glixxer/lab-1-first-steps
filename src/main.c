@@ -56,6 +56,8 @@ void delete_item(void);
 void favorite_resource(void);
 void get_farmer_name(void);
 int load_inventory(void);
+void remove_newline(char* str);
+void pause(void);
 
 int main()
 {
@@ -104,7 +106,7 @@ int main()
             favorite_resource();
             break;
         case 7:
-            
+            search_item();
             break;
         case 8:
             
@@ -113,7 +115,7 @@ int main()
             
             break;
         default:
-            printf("Введите не отрицательное целое число меньше 7\n");
+            printf("Введите целое число от 0 до 9\n");
         }
     }
     return 0;
@@ -156,7 +158,10 @@ void print_menu(void)
     printf("[3] Посмотреть инвентарь\n");
     printf("[4] Положить предмет в слот\n");
     printf("[5] Выбросить предмет\n");
-    printf("[6] Просмотр любимого ресурса\n\n");
+    printf("[6] Просмотр любимого ресурса\n");
+    printf("[7] Поиск предмета в рюкзаке по названию \n");
+    printf("[8] Записать состояние в дневник фермера (diary.txt) \n");
+    printf("[9] Расшифровать старые записи (Задание по варианту) DEP//\n");
 }
 
 void clear_buffer(void)
@@ -389,4 +394,56 @@ int load_inventory(void)
     return 1;
 }
 
-//
+int search_item(void)
+{
+    char buffer[MAX_NAME_LEN];
+    int item_id = -1;
+    int found = 0;
+
+    printf("Введите название предмета для поиска: \n");
+    fgets(buffer, sizeof(buffer), stdin);
+    remove_newline(buffer);
+
+    for (int i = 0; i < INVENTORY_SIZE; i++)
+    {
+        if (strcmp(buffer, get_item_name(i)) == 0)
+        {
+            item_id = i;
+            break;
+        }
+    }
+
+    if (item_id == -1)
+    {
+        printf("Предмет не найден.\n");
+        pause();
+        return;
+    }
+
+    char item_name[MAX_NAME_LEN];
+    strncpy(item_name, get_item_name(item_id), MAX_NAME_LEN - 1);
+    item_name[MAX_NAME_LEN - 1] = '\0';
+
+    printf("Предмет %s находится в: \n", item_name);    
+
+    for (int i = 0; i < INVENTORY_SIZE; i++)
+    {
+        if (inventory[i] == item_id)
+        {
+            printf("Слоте %d.\n", i);
+        }
+    }
+    pause();
+    return;
+}
+
+void remove_newline(char* str)
+{
+    str[strcspn(str, "\r\n")] = '\0';
+}
+
+void pause(void)
+{ 
+    printf("\nНажмите Enter для продолжения...");
+    getchar();
+}
