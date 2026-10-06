@@ -11,7 +11,10 @@
     #include <locale.h>
 #endif
 
+#define NPC_MAX_NAME_LEN 64
+#define NPC_MAX_LOCATION_LEN 64
 #define MAX_NAME_LENGTH 33
+#define MAX_NPC 10
 
 #define MAX_ITEMS 10
 #define MAX_NAME_LEN 32
@@ -59,6 +62,7 @@ int load_inventory(void);
 void remove_newline(char* str);
 void pause(void);
 void write_diary(void);
+void npc_shedule(void);
 
 int main()
 {
@@ -113,7 +117,7 @@ int main()
             write_diary();
             break;
         case 9:
-            
+            npc_shedule();
             break;
         default:
             printf("Введите целое число от 0 до 9\n");
@@ -162,7 +166,7 @@ void print_menu(void)
     printf("[6] Просмотр любимого ресурса\n");
     printf("[7] Поиск предмета в рюкзаке по названию \n");
     printf("[8] Записать состояние в дневник фермера (diary.txt) \n");
-    printf("[9] Расшифровать старые записи (Задание по варианту) DEP//\n");
+    printf("[9] Расписание жителей деревни\n");
 }
 
 void clear_buffer(void)
@@ -471,6 +475,75 @@ void write_diary(void)
 
     fclose(file);
     printf("Состояние записано в diary.txt\n");
+    pause();
+    return;
+}
+
+void npc_shedule(void)
+{
+    typedef struct
+    {
+        char name[NPC_MAX_NAME_LEN];
+        char location[NPC_MAX_LOCATION_LEN];
+        int found;
+    } NPC;
+
+    NPC npcs[MAX_NPC] = {"","",0};
+
+    FILE* input = fopen("input.txt", "r");
+    if (input == NULL)
+    {
+        printf("Не удалось открыть input.txt для чтения\n");
+        pause();
+        return;
+    }
+
+    FILE* output = fopen("output.txt", "w");
+    if (output == NULL)
+    {
+        printf("Не удалось открыть output.txt для записи\n");
+        pause();
+        return;
+    }
+
+    char buffer[256];
+    int npc_count = 0;
+    while (fgets(buffer, sizeof(buffer), input) != NULL)
+    {
+        char name[NPC_MAX_NAME_LEN];
+        char location[NPC_MAX_LOCATION_LEN];
+        int start_hour, end_hour;
+
+        sscanf(buffer, "%63[^;];%d;%d;%63[^\n]", name, &start_hour, &end_hour, location);
+
+        if (current_hour > start_hour && current_hour < end_hour && npcs[npc_count].found == 0)
+        {
+            strcpy(npcs[npc_count].name, name);
+            strcpy(npcs[npc_count].location, location);
+            npcs[npc_count].found = 1;
+        }
+        if (strchr(location, ',') != NULL && npcs[npc_count].found == 0)
+        {
+            if (!(strcmp(npcs[npc_count - 1].name, name) == 0))
+            {
+                strcpy(npcs[npc_count].name, name);
+                strcpy(npcs[npc_count].location, "Спит дома");
+                npcs[npc_count].found = 1;
+            } 
+        }
+        if (npcs[npc_count].found == 1) npc_count++;
+    }
+    fclose(input);
+    fprintf(output, "==== Сводка состояния жителей на день: %d, час: %02d:00 ====\n", current_day, current_hour);
+    for (int i = 0; i < MAX_NPC; i++)
+    {
+        if (npcs[i].found && npcs[i].name != '\n')
+        {
+            printf("%s, локация: %s\n", npcs[i].name, npcs[i].location);
+            fprintf(output, "%s, локация: %s\n", npcs[i].name, npcs[i].location);
+        }
+    }
+    fclose(output);
     pause();
     return;
 }
