@@ -58,6 +58,7 @@ void get_farmer_name(void);
 int load_inventory(void);
 void remove_newline(char* str);
 void pause(void);
+void write_diary(void);
 
 int main()
 {
@@ -109,7 +110,7 @@ int main()
             search_item();
             break;
         case 8:
-            
+            write_diary();
             break;
         case 9:
             
@@ -446,4 +447,30 @@ void pause(void)
 { 
     printf("\nНажмите Enter для продолжения...");
     getchar();
+}
+
+void write_diary(void)
+{
+    FILE* file = fopen("diary.txt", "a");
+    if (file == NULL)
+    {
+        printf("Не удалось открыть diary.txt для записи\n");
+        return;
+    }
+
+    fprintf(file, "===== Дневник фермера =====\n");
+    fprintf(file, "Фермер: %s\n", farmer_name);
+    fprintf(file, "День: %d, час: %02d:00\n", current_day, current_hour);
+    fprintf(file, "Инвентарь:\n");
+
+    for (int i = 0; i < INVENTORY_SIZE; i++)
+    {
+        fprintf(file, "Слот %d: [%d] - %s\n", i, inventory[i], get_item_name(inventory[i]));
+    }     
+    fprintf(file, "===========================\n\n");
+
+    fclose(file);
+    printf("Состояние записано в diary.txt\n");
+    pause();
+    return;
 }
