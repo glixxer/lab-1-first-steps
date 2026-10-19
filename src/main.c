@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <stdbool.h>
 
 #ifdef _WIN32
     #include <Windows.h> 
@@ -16,35 +16,24 @@
 #define MAX_NAME_LENGTH 33
 #define MAX_NPC 10
 
-#define MAX_ITEMS 10
 #define MAX_NAME_LEN 32
 #define INVENTORY_SIZE 10
-#define EMPTY 0
-#define WOOD 1
-#define STONE 2
-#define SEEDS 3
-#define WATERING_CAN 4
-#define HOE 5
-#define FERTILIZER 6
-#define WHEAT 7
-#define CARROT 8
-#define POTATO 9
 
-char farmer_name[MAX_NAME_LENGTH];
+typedef enum {
+    EMPTY, WOOD, STONE, SEEDS, WATERING_CAN, HOE,
+    FERTILIZER, WHEAT, CARROT, POTATO, MAX_ITEMS
+} ItemId;
+
+const char farmer_name[MAX_NAME_LENGTH];
 int current_day = 1;
 int current_hour = 8;
-char item_names[MAX_ITEMS][MAX_NAME_LEN] = { 0 };
+char item_names[MAX_ITEMS][MAX_NAME_LEN] = {
+    "Пусто", "Дерево", "Камень", "Семена", "Лейка",
+    "Мотыга", "Удобрение", "Пшеница", "Морковь", "Картошка"
+};
 int inventory[INVENTORY_SIZE] = { 
-    EMPTY,
-    WOOD,
-    STONE,
-    SEEDS,
-    SEEDS,
-    SEEDS,
-    HOE,
-    FERTILIZER,
-    WATERING_CAN,
-    WHEAT
+    EMPTY, WOOD, STONE, SEEDS, SEEDS, SEEDS,
+    HOE, FERTILIZER, WATERING_CAN, WHEAT
 };
 
 char* get_item_name(int id);
@@ -59,6 +48,7 @@ void delete_item(void);
 void favorite_resource(void);
 void get_farmer_name(void);
 int load_inventory(void);
+void search_item(void);
 void remove_newline(char* str);
 void pause(void);
 void write_diary(void);
@@ -75,84 +65,32 @@ int main()
     get_farmer_name();
     printf("Привет, %s! Добро пожаловать в игру!\n", farmer_name);
 
-    if (load_inventory())
-    {
-        for (int i = 0; i < INVENTORY_SIZE; i++)
-        {
-            inventory[i] = item_names[i][0];
-        }
-    }
+    load_inventory();
     
-    while (1)
+    while (true)
     {
         print_menu();
         int response = read_input(0);
         switch (response)
         {
-        case 0:
-            printf("Выход из программы\n");
-            return 0;
-        case 1:
-            check_time();
-            break;
-        case 2:
-            forward_time();
-            break;
-        case 3:
-            check_inventory();
-            break;
-        case 4:
-            put_item();
-            break;
-        case 5:
-            delete_item();
-            break;
-        case 6:
-            favorite_resource();
-            break;
-        case 7:
-            search_item();
-            break;
-        case 8:
-            write_diary();
-            break;
-        case 9:
-            npc_shedule();
-            break;
-        default:
-            printf("Введите целое число от 0 до 9\n");
+        case 0: printf("Выход из программы\n"); return 0;
+        case 1: check_time(); break;
+        case 2: forward_time(); break;
+        case 3: check_inventory(); break;
+        case 4: put_item(); break;
+        case 5: delete_item(); break;
+        case 6: favorite_resource(); break;
+        case 7: search_item(); break;
+        case 8: write_diary(); break;
+        case 9: npc_shedule(); break;
+        default: printf("Введите целое число от 0 до 9\n");
         }
     }
-    return 0;
 }
 
 char* get_item_name(int id)
 {
-    switch (id)
-    {
-        case 0:
-            return "Пусто";
-        case 1:
-            return "Дерево";
-        case 2:
-            return "Камень";
-        case 3:
-            return "Семена";
-        case 4:
-            return "Лейка";
-        case 5:
-            return "Мотыга";
-        case 6:
-            return "Удобрение";
-        case 7:
-            return "Пшеница";
-        case 8:
-            return "Морковь";
-        case 9:
-            return "Картошка";
-        default:
-            return "NULL";
-    }
+    return (id >= EMPTY && id < MAX_ITEMS) ? item_names[id] : "Неизвестный предмет";
 }
 
 void print_menu(void)
@@ -380,26 +318,35 @@ int load_inventory(void)
         printf("Файл items.txt не найден.\n Используется инвентарь по умолчанию.\n");
         return 0;
     }
-    char line[MAX_NAME_LEN];
+    char line[256];
     int loaded = 0;
-    while (fgets(line, sizeof(line), file) != NULL)
+    int loaded_inventory[INVENTORY_SIZE] = { EMPTY };
+    while (loaded < INVENTORY_SIZE && fgets(line, sizeof(line), file) != NULL)
     {
         int id;
         char name[MAX_NAME_LEN];
 
-        sscanf(line, "%d %s", &id, name);
-        item_names[loaded][0] = id;
-        for (int i = 1; i < MAX_NAME_LEN + 1; i++)
+        if (sscanf(line, "%d %31s", &id, name) != 2 ||
+            id < EMPTY || id >= MAX_ITEMS)
         {
-            item_names[loaded][i] = name[i - 1];
+            printf("Некорректная строка в items.txt пропущена.\n");
+            continue;
         }
+        loaded_inventory[loaded] = id;
+        strcpy(item_names[id], name);
         loaded++;
     }
     fclose(file);
+    if (loaded == 0)
+    {
+        printf("В items.txt нет подходящих предметов. Используется инвентарь по умолчанию.\n");
+        return 0;
+    }
+    memcpy(inventory, loaded_inventory, sizeof(inventory));
     return 1;
 }
 
-int search_item(void)
+void search_item(void)
 {
     char buffer[MAX_NAME_LEN];
     int item_id = -1;
