@@ -4,11 +4,11 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
-    #include <Windows.h> 
-    #define _CRT_SECURE_NO_WARNINGS
-    #pragma warning(disable : 4996)
+#include <Windows.h> 
+#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable : 4996)
 #else
-    #include <locale.h>
+#include <locale.h>
 #endif
 
 #define NPC_MAX_NAME_LEN 64
@@ -24,14 +24,14 @@ typedef enum {
     FERTILIZER, WHEAT, CARROT, POTATO, MAX_ITEMS
 } ItemId;
 
-const char farmer_name[MAX_NAME_LENGTH];
+char farmer_name[MAX_NAME_LENGTH];
 int current_day = 1;
 int current_hour = 8;
 char item_names[MAX_ITEMS][MAX_NAME_LEN] = {
     "Пусто", "Дерево", "Камень", "Семена", "Лейка",
     "Мотыга", "Удобрение", "Пшеница", "Морковь", "Картошка"
 };
-int inventory[INVENTORY_SIZE] = { 
+int inventory[INVENTORY_SIZE] = {
     EMPTY, WOOD, STONE, SEEDS, SEEDS, SEEDS,
     HOE, FERTILIZER, WATERING_CAN, WHEAT
 };
@@ -57,8 +57,8 @@ void npc_shedule(void);
 int main()
 {
 #ifdef _WIN32
-    SetConsoleCP(CP_UTF8); 
-    SetConsoleOutputCP(CP_UTF8); 
+    SetConsoleCP(CP_UTF8);
+    SetConsoleOutputCP(CP_UTF8);
 #else
     setlocale(LC_ALL, "");
 #endif
@@ -66,7 +66,7 @@ int main()
     printf("Привет, %s! Добро пожаловать в игру!\n", farmer_name);
 
     load_inventory();
-    
+
     while (true)
     {
         print_menu();
@@ -130,7 +130,7 @@ int read_input(int err) // 1 - с ошибкой для дебила, 0 - без
             clear_buffer();
             return response;
         }
-    } 
+    }
 }
 
 void check_time(void)
@@ -221,76 +221,61 @@ void delete_item(void)
             printf("Слот выходит за границы!\n");
         }
         else
-        {     
-          inventory[slot] = 0;
-          printf("Предмет выброшен!\n\n");
-          return;         
+        {
+            inventory[slot] = 0;
+            printf("Предмет выброшен!\n\n");
+            return;
         }
     }
 }
 
-void favorite_resource(void) 
-{ 
-    int count[INVENTORY_SIZE] = { 0 }; 
-    int favorite_id = 0; 
-    int max_count = 0; 
-    for (int i = 0; i < INVENTORY_SIZE; i++) 
-    { 
-        if (inventory[i] != 0) 
-        { 
-            count[inventory[i]]++; 
-        } 
-    } 
-    for (int i = 1; i < INVENTORY_SIZE; i++) 
-    { 
+void favorite_resource(void)
+{
+    int count[INVENTORY_SIZE] = { 0 };
+    int favorite_id = 0;
+    int max_count = 0;
+    for (int i = 0; i < INVENTORY_SIZE; i++)
+    {
+        if (inventory[i] != 0)
+        {
+            count[inventory[i]]++;
+        }
+    }
+    for (int i = 1; i < INVENTORY_SIZE; i++)
+    {
         if (count[i] > max_count)
-        { 
+        {
             max_count = count[i];
             favorite_id = i;
-        } 
-    } 
+        }
+    }
     if (max_count == 0)
-    { 
-        printf("Инвентарь пуст\n\n"); 
-    } 
-    else 
-    { 
+    {
+        printf("Инвентарь пуст\n\n");
+    }
+    else
+    {
         printf("Любимый ресурс: %d - %s, он встречается %d раз(а)\n\n", favorite_id, get_item_name(favorite_id), max_count);
         return;
-    } 
+    }
 }
 
 void get_farmer_name(void)
 {
-    char input[256];
-    while (1)
+    char input[MAX_NAME_LENGTH + 1];
+    while (true)
     {
         printf("Введите имя персонажа: \n");
-        if (fgets(input, sizeof(input), stdin) == NULL)
+        fgets(input, sizeof(input), stdin);
+        size_t len = strcspn(input, "\r\n");
+        if (len >= MAX_NAME_LENGTH)
         {
-            printf("Ошибка ввода. Повторите попытку.\n");
+            if (strchr(input, '\n') == NULL)
+            {
+                clear_buffer();
+            }
+            printf("Имя слишком длинное. Максимум %d символа\n", MAX_NAME_LENGTH - 1);
             continue;
-        }
-
-        size_t len = strlen(input);
-        if (len > 0 && input[len - 1] == '\n')
-        {
-            input[len - 1] = '\0';
-            len--;
-        }
-        else
-        {
-            int ch;
-            int overflow = 0;
-            while ((ch = getchar()) != '\n' && ch != EOF)
-            {
-                overflow = 1;
-            }
-            if (overflow)
-            {
-                printf("Имя слишком длинное. Максимум %d символов.\n", MAX_NAME_LENGTH - 1);
-                continue;
-            }
         }
 
         if (len == 0)
@@ -299,14 +284,9 @@ void get_farmer_name(void)
             continue;
         }
 
-        if (len > MAX_NAME_LENGTH - 1)
-        {
-            printf("Имя слишком длинное. Максимум %d символов.\n", MAX_NAME_LENGTH - 1);
-            continue;
-        }
-
-        strncpy(farmer_name, input, len + 1);
-        return;
+        input[len] = '\0';
+        memcpy(farmer_name, input, len + 1);
+        return true;
     }
 }
 
@@ -376,7 +356,7 @@ void search_item(void)
     strncpy(item_name, get_item_name(item_id), MAX_NAME_LEN - 1);
     item_name[MAX_NAME_LEN - 1] = '\0';
 
-    printf("Предмет %s находится в: \n", item_name);    
+    printf("Предмет %s находится в: \n", item_name);
 
     for (int i = 0; i < INVENTORY_SIZE; i++)
     {
@@ -395,7 +375,7 @@ void remove_newline(char* str)
 }
 
 void pause(void)
-{ 
+{
     printf("\nНажмите Enter для продолжения...");
     getchar();
 }
@@ -417,7 +397,7 @@ void write_diary(void)
     for (int i = 0; i < INVENTORY_SIZE; i++)
     {
         fprintf(file, "Слот %d: [%d] - %s\n", i, inventory[i], get_item_name(inventory[i]));
-    }     
+    }
     fprintf(file, "===========================\n\n");
 
     fclose(file);
@@ -435,7 +415,7 @@ void npc_shedule(void)
         int found;
     } NPC;
 
-    NPC npcs[MAX_NPC] = {"","",0};
+    NPC npcs[MAX_NPC] = { "","",0 };
 
     FILE* input = fopen("input.txt", "r");
     if (input == NULL)
@@ -476,7 +456,7 @@ void npc_shedule(void)
                 strcpy(npcs[npc_count].name, name);
                 strcpy(npcs[npc_count].location, "Спит дома");
                 npcs[npc_count].found = 1;
-            } 
+            }
         }
         if (npcs[npc_count].found == 1) npc_count++;
     }
