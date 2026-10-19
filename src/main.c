@@ -286,7 +286,7 @@ void get_farmer_name(void)
 
         input[len] = '\0';
         memcpy(farmer_name, input, len + 1);
-        return true;
+        return;
     }
 }
 
