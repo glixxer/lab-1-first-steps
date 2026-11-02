@@ -1,6 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "utils.h"
 #include "player.h"
+#include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
