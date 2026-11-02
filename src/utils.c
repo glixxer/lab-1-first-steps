@@ -148,7 +148,8 @@ bool time_sleep(GameTime* time)
 //работа с файлами
 bool load_inventory(Player* player)
 {
-    FILE* file = fopen("items.txt", "r");
+    FILE* file = fopen("data/items.txt", "r");
+    if (file == NULL) file = fopen("../data/items.txt", "r");
     if (file == NULL)
     {
         printf("Файл items.txt не найден.\n Используется инвентарь по умолчанию.\n");
@@ -231,7 +232,8 @@ void npc_shedule(GameTime* time)
 
     NPC npcs[NPC_LIMIT] = { "","",0 };
 
-    FILE* input = fopen("input.txt", "r");
+    FILE* input = fopen("data/input.txt", "r");
+    if (input == NULL) input = fopen("../data/input.txt", "r");
     if (input == NULL)
     {
         printf("Не удалось открыть input.txt для чтения\n");
