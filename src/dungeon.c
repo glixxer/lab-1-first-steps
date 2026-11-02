@@ -110,3 +110,111 @@ bool dungeon_stairs_reachable(Dungeon* dungeon)
     return up_found && down_found;
 }
 
+void fill_dungeon(Dungeon* dungeon)
+{
+    for (int y = 0; y < dungeon->height; y++)
+    {
+        for (int x = 0; x < dungeon->width; x++)
+        {
+            char tile = TILE_FLOOR;
+            if (x == 0 || y == 0 || x == dungeon->width - 1 || y == dungeon->height - 1)
+            {
+                tile = TILE_WALL;
+            }
+            else if (rand() % PERCENT_TOTAL < OBSTACLE_PERCENT)
+            {
+                tile = rand() % 2 ? TILE_TREE : TILE_ROCK;
+            }
+            else if (rand() % PERCENT_TOTAL < ICE_PERCENT)
+            {
+                tile = TILE_ICE;
+            }
+            dungeon->cells[y][x] = tile;
+        }
+    }
+    dungeon->cells[START_Y][START_X] = TILE_FLOOR;
+    dungeon->cells[START_Y][START_X + 1] = TILE_UP;
+    dungeon->cells[dungeon->height - 2][dungeon->width - 2] = TILE_DOWN;
+    bool has_ice = false;
+    for (int y = 1; y < dungeon->height - 1; y++)
+    {
+        for (int x = 1; x < dungeon->width - 1; x++)
+        {
+            if (dungeon->cells[y][x] == TILE_ICE)
+            {
+                has_ice = true;
+            }
+        }
+    }
+    if (!has_ice)
+    {
+        dungeon->cells[START_Y + 1][START_X] = TILE_ICE;
+    }
+}
+
+Dungeon* dungeon_generate(unsigned int depth)
+{
+    int width = MAP_MIN_SIZE + rand() % (MAP_MAX_SIZE - MAP_MIN_SIZE + 1);
+    int height = MAP_MIN_SIZE + rand() % (MAP_MAX_SIZE - MAP_MIN_SIZE + 1);
+    Dungeon* dungeon = dungeon_create(width, height, depth);
+    if (dungeon == NULL) return NULL;
+    for (int attempt = 0; attempt < GENERATION_ATTEMPTS; attempt++)
+    {
+        fill_dungeon(dungeon);
+        if (dungeon_stairs_reachable(dungeon)) return dungeon;
+    }
+    for (int y = START_Y; y < height - 1; y++)
+    {
+        dungeon->cells[y][START_X] = TILE_FLOOR;
+    }
+    for (int x = START_X; x < width - 1; x++)
+    {
+        dungeon->cells[height - 2][x] = TILE_FLOOR;
+    }
+    dungeon->cells[height - 2][width - 2] = TILE_DOWN;
+    dungeon->cells[START_Y + 1][START_X] = TILE_ICE;
+    return dungeon;
+}
+
+StepResult dungeon_step(Dungeon* dungeon, Player* player, int dx, int dy)
+{
+    if (player->stamina <= 0 || player->hp <= 0) return STEP_EVACUATE;
+    if (!((dx == 0 && (dy == -1 || dy == 1)) ||
+        (dy == 0 && (dx == -1 || dx == 1))))
+    {
+        return STEP_BLOCKED;
+    }
+    int x = player->x + dx, y = player->y + dy;
+    if (!dungeon_can_enter(dungeon, x, y))
+    {
+        dungeon->sliding = false;
+        return STEP_BLOCKED;
+    }
+    player->x = x;
+    player->y = y;
+    player_spend_stamina(player, STEP_STAMINA_COST);
+    player_apply_variant(player);
+    dungeon->sliding = dungeon->cells[y][x] == TILE_ICE;
+    dungeon->slide_dx = dx;
+    dungeon->slide_dy = dy;
+    if (player->stamina <= 0 || player->hp <= 0) return STEP_EVACUATE;
+    return dungeon->cells[y][x] == TILE_DOWN ? STEP_DESCEND : STEP_MOVED;
+}
+
+bool dungeon_descend(Dungeon** dungeon, Player* player, GameTime* time)
+{
+    if (*dungeon == NULL || time_hours_until_sleep(time) == 0)
+    {
+        return false;
+    }
+    unsigned int depth = (*dungeon)->depth + 1;
+    dungeon_destroy(*dungeon);
+    *dungeon = dungeon_generate(depth);
+    if (*dungeon == NULL) return false;
+    player->x = START_X;
+    player->y = START_Y;
+    player_spend_stamina(player, FLOOR_STAMINA_COST);
+    (void)time_wait(time, 1);
+    player_add_gold(player, depth);
+    return true;
+}

@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+    #include <conio.h>
+    #include <io.h>
+#else
+    #include <termios.h>
+    #include <unistd.h>
+#endif
+
 //чтение ввода
 bool read_line(char* buffer, size_t size)
 {
@@ -42,6 +50,65 @@ bool read_int(char* prompt, int min, int max, int* value)
             return true;
         }
         printf("Введите целое число от %d до %d.\n", min, max);
+    }
+}
+
+int read_key(void)
+{
+#ifdef _WIN32
+    if (_isatty(_fileno(stdin)))
+    {
+        int key = _getwch();
+        if (key == 0 || key == 224)
+        {
+            _getwch();
+            return 0;
+        }
+        switch (key) //)))))))
+        {
+        case L'ц': case L'Ц': return 'W';
+        case L'ф': case L'Ф': return 'A';
+        case L'ы': case L'Ы': return 'S';
+        case L'в': case L'В': return 'D';
+        case L'й': case L'Й': return 'Q';
+        }
+        if (key == 3 || key == 26) return EOF;
+        if (key > 127) return 0;
+        return key;
+    }
+#else
+    if (isatty(STDIN_FILENO))
+    {
+        struct termios saved, mode;
+        if (tcgetattr(STDIN_FILENO, &saved) != 0) return EOF;
+        mode = saved;
+        mode.c_lflag &= (tcflag_t)~(ICANON | ECHO);
+        mode.c_cc[VMIN] = 1;
+        mode.c_cc[VTIME] = 0;
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &mode) != 0) return EOF;
+        int key = getchar();
+        if (tcsetattr(STDIN_FILENO, TCSANOW, &saved) != 0) return EOF;
+        return key;
+    }
+#endif
+    return getchar();
+}
+
+bool read_command(char* command) //ввод в подземелье
+{
+    puts("W/A/S/D — движение, Q — домой (только на U). Enter не нужен.");
+    while (true)
+    {
+        int key = read_key();
+        if (key == EOF) return false;
+        if (isspace((unsigned char)key)) continue;
+        key = toupper((unsigned char)key);
+        if (key != 0 && strchr("WASDQ", key))
+        {
+            *command = (char)key;
+            return true;
+        }
+        puts("Неизвестная команда. Введите одну букву W, A, S, D или Q.");
     }
 }
 
@@ -150,7 +217,7 @@ void write_diary(Player* player, GameTime* time)
     printf("Состояние записано в diary.txt\n");
 }
 
-void npc_shedule(Player* player, GameTime* time)
+void npc_shedule(GameTime* time)
 {
     typedef struct
     {
