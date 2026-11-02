@@ -4,8 +4,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "config.h"
-
-struct Player;
+#include "player.h"
 
 typedef struct {
     int day;

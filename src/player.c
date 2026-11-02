@@ -12,6 +12,7 @@ Player* player_create(char* name)
     Player* player = calloc(1, sizeof(*player));
     if (player == NULL) return NULL;
 
+    name[strcspn(name, "\r\n")] = '\0';
     memcpy(player->name, name, len + 1);
     player->max_hp = START_HP;
     player->hp = START_HP;
@@ -32,11 +33,11 @@ void player_destroy(Player* player)
 {
     if (player == NULL) 
     {
-        printf("Память структуры не нуждается в очистке");
+        puts("Память структуры не нуждается в очистке\n");
     }
     else
     {
-        printf("Память структуры %p очищена", (void*)player);
+        printf("Память структуры %p очищена\n", (void*)player);
         free(player);
     }
 }
@@ -70,7 +71,7 @@ void player_evacuate(Player* player)
     printf("Герой упал в обморок, его нашли спасатели. Плата: %d золота.\n", pay);
 }
 
-bool player_requare(Player* player)
+bool player_require(Player* player)
 {
     if (player != NULL) return true;
     puts("Сначала создайте персонажа!");
@@ -84,11 +85,11 @@ char* inventory_get_item_name(Player* player, int id)
 
 void inventory_check(Player* player)
 {
-    if (!player_requare) return;
+    if (!player_require(player)) return;
 
     for (int item = 0; item < INVENTORY_SIZE; item++)
     {
-        printf("Слот %d: [%d] (%s)\n", item, player->inventory, get_item_name(player, item));
+        printf("Слот %d: [%d] (%s)\n", item, player->inventory[item], inventory_get_item_name(player, player->inventory[item]));
     }
 }
 
@@ -98,11 +99,11 @@ void inventory_put_item(Player* player)
     inventory_check(player);
     int slot, item;
     if (!read_int("В какой слот положить предмет?\n", 0, INVENTORY_SIZE - 1, &slot)) return;
-    for (int i = 0; i < ITEM_NAME_SIZE; i++)
+    for (int i = 0; i < MAX_ITEMS; i++)
     {
         printf("%d — %s\n", i, inventory_get_item_name(player, i));
     }
-    if (!read_int("Какой предмет положить?\n", EMPTY, ITEM_NAME_SIZE - 1, &item)) return;
+    if (!read_int("Какой предмет положить?\n", EMPTY, MAX_ITEMS - 1, &item)) return;
     player->inventory[slot] = item;
     puts("Слот заменён.");
 }
@@ -122,7 +123,7 @@ void inventory_delete(Player* player)
 void inventory_favorite(Player* player)
 {
     if (!player_require(player)) return;
-    int counts[ITEM_NAME_SIZE] = { 0 };
+    int counts[MAX_ITEMS] = { 0 };
     int favorite = EMPTY;
     for (int i = 0; i < INVENTORY_SIZE; i++)
     {
@@ -149,7 +150,7 @@ void inventory_favorite(Player* player)
     }
 }
 
-void inventory_search(const Player* player)
+void inventory_search(Player* player)
 {
     if (!player_require(player)) return;
     char query[ITEM_NAME_SIZE];

@@ -20,11 +20,11 @@ void player_restore(Player* player);
 void player_spend_stamina(Player* player, int amount);
 void player_add_gold(Player* player, int floor);
 void player_evacuate(Player* player);
-bool player_require(const Player* player);
+bool player_require(Player* player);
 char* inventory_get_item_name(Player* player, int id);
 void inventory_check(Player* player);
 void inventory_put_item(Player* player);
 void inventory_delete(Player* player);
 void inventory_favorite(Player* player);
-void inventory_search(const Player* player);
+void inventory_search(Player* player);
 #endif

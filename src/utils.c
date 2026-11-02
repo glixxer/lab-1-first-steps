@@ -15,6 +15,7 @@
 //чтение ввода
 bool read_line(char* buffer, size_t size)
 {
+    if (fgets(buffer, (int)size, stdin) == NULL) return false;
     if (strchr(buffer, '\n') == NULL && !feof(stdin))
     {
         int ch = getchar();
@@ -24,6 +25,7 @@ bool read_line(char* buffer, size_t size)
             return false;
         }
     }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
     return true;
 }
 
@@ -64,13 +66,13 @@ int read_key(void)
             _getwch();
             return 0;
         }
-        switch (key) //)))))))
+        switch (key)
         {
-        case L'ц': case L'Ц': return 'W';
-        case L'ф': case L'Ф': return 'A';
-        case L'ы': case L'Ы': return 'S';
-        case L'в': case L'В': return 'D';
-        case L'й': case L'Й': return 'Q';
+        case L'\u0446': case L'\u0426': return 'W'; // ц, Ц
+        case L'\u0444': case L'\u0424': return 'A'; // ф, Ф
+        case L'\u044B': case L'\u042B': return 'S'; // ы, Ы
+        case L'\u0432': case L'\u0412': return 'D'; // в, В
+        case L'\u0439': case L'\u0419': return 'Q'; // й, Й
         }
         if (key == 3 || key == 26) return EOF;
         if (key > 127) return 0;
@@ -182,11 +184,11 @@ bool load_inventory(Player* player)
 
 void inventory_default_init(Player* player)
 {
-    char* inventory[INVENTORY_SIZE] = {
+    char* inventory[MAX_ITEMS] = {
         "Пусто", "Дерево", "Камень", "Семена", "Лейка", "Мотыга",
         "Удобрение", "Пшеница", "Морковь", "Картошка"
     };
-    for (int i = 0; i < INVENTORY_SIZE; i++)
+    for (int i = 0; i < MAX_ITEMS; i++)
     {
         strcpy(player->item_names[i], inventory[i]);
     }
@@ -194,6 +196,7 @@ void inventory_default_init(Player* player)
 
 void write_diary(Player* player, GameTime* time)
 {
+    if (!player_require(player)) return;
     FILE* file = fopen("diary.txt", "a");
     if (file == NULL)
     {
@@ -232,7 +235,6 @@ void npc_shedule(GameTime* time)
     if (input == NULL)
     {
         printf("Не удалось открыть input.txt для чтения\n");
-        pause();
         return;
     }
 
@@ -240,7 +242,6 @@ void npc_shedule(GameTime* time)
     if (output == NULL)
     {
         printf("Не удалось открыть output.txt для записи\n");
-        pause();
         return;
     }
 

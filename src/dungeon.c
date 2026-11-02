@@ -193,7 +193,6 @@ StepResult dungeon_step(Dungeon* dungeon, Player* player, int dx, int dy)
     player->x = x;
     player->y = y;
     player_spend_stamina(player, STEP_STAMINA_COST);
-    player_apply_variant(player);
     dungeon->sliding = dungeon->cells[y][x] == TILE_ICE;
     dungeon->slide_dx = dx;
     dungeon->slide_dy = dy;
@@ -203,7 +202,7 @@ StepResult dungeon_step(Dungeon* dungeon, Player* player, int dx, int dy)
 
 bool dungeon_descend(Dungeon** dungeon, Player* player, GameTime* time)
 {
-    if (*dungeon == NULL || time_hours_until_sleep(time) == 0)
+    if (*dungeon == NULL || time_hours_til_sleep(time) == 0)
     {
         return false;
     }
