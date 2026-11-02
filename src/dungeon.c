@@ -218,3 +218,101 @@ bool dungeon_descend(Dungeon** dungeon, Player* player, GameTime* time)
     player_add_gold(player, depth);
     return true;
 }
+
+bool adventure_allowed(Player* player, GameTime* time)
+{
+    if (!player_require(player)) return false;
+    if (player->stamina <= 2 || player->hp <= 0)
+    {
+        puts("Нет сил для похода. Восстановитесь во время сна.");
+        return false;
+    }
+    if (time->hour == SLEEP_HOUR)
+    {
+        puts("Уже 02:00. Сначала нужно лечь спать.");
+        return false;
+    }
+    return true;
+}
+
+void dungeon_draw(Dungeon* dungeon, Player* player, GameTime* time)
+{
+    printf("\nHP: %d/%d | Выносливость: %d/%d | Золото: %d | Этаж: %u | Время: %02d:00\n",
+        player->hp, player->max_hp, player->stamina, player->max_stamina,
+        player->gold, dungeon->depth, time->hour);
+    printf("Подземелье. Глубина: %u. Карта: %dx%d\n", dungeon->depth, dungeon->width, dungeon->height);
+    puts("@ — герой; #, T, R — препятствия; . — пол; ~ — лёд; U — домой; D — вниз.");
+    for (int y = 0; y < dungeon->height; y++)
+    {
+        for (int x = 0; x < dungeon->width; x++)
+        {
+            putchar(x == player->x && y == player->y ? TILE_HERO : dungeon->cells[y][x]);
+        }
+        putchar('\n');
+    }
+}
+
+void adventure_run(Dungeon** dungeon, Player* player, GameTime* time)
+{
+    if (!adventure_allowed(player, time)) return;
+    dungeon_destroy(*dungeon);
+    *dungeon = dungeon_generate(1);
+    if (*dungeon == NULL)
+    {
+        puts("Не удалось выделить память для карты.");
+        return;
+    }
+    player->x = START_X;
+    player->y = START_Y;
+    while (true)
+    {
+        if (player->stamina <= 0 || player->hp <= 0 || time->hour == SLEEP_HOUR)
+        {
+            player_evacuate(player);
+            break;
+        }
+        dungeon_draw(*dungeon, player, time);
+        int dx = (*dungeon)->slide_dx, dy = (*dungeon)->slide_dy;
+        if ((*dungeon)->sliding)
+        {
+            puts("Скользкий лёд! Следующий шаг — в прежнем направлении.");
+        }
+        else
+        {
+            char command;
+            if (!read_command(&command))
+            {
+                break;
+            }
+            if (command == 'Q')
+            {
+                if ((*dungeon)->cells[player->y][player->x] == TILE_UP)
+                {
+                    puts("Вы вернулись домой. Заработанное золото сохранено.");
+                    break;
+                }
+                puts("Домой можно вернуться только с лестницы U.");
+                continue;
+            }
+            dx = command == 'D' ? 1 : command == 'A' ? -1
+                : 0;
+            dy = command == 'S' ? 1 : command == 'W' ? -1
+                : 0;
+        }
+        StepResult result = dungeon_step(*dungeon, player, dx, dy);
+        if (result == STEP_BLOCKED)
+        {
+            puts("Путь закрыт стеной или препятствием.");
+            continue;
+        }
+        if (result == STEP_DESCEND && !dungeon_descend(dungeon, player, time))
+        {
+            puts("Не удалось выделить память для нового этажа.");
+            break;
+        }
+    }
+    dungeon_destroy(*dungeon);
+    *dungeon = NULL;
+    player->x = START_X;
+    player->y = START_Y;
+}

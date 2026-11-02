@@ -1,21 +1,46 @@
-#pragma once
+#ifndef DUNGEON_H
+#define DUNGEON_H
 
 #include <stdbool.h>
+#include "player.h"
+#include "utils.h"
 
-#define MAP_MIN_SIZE 5
-#define MAP_MAX_SIZE 30
-#define MIN_OBS_CHANCE 15
-#define MAX_OBS_CHANCE 30
-#define MIN_ICE_CHANCE 10
-#define MAX_ICE_CHANCE 25
+typedef enum
+{
+    TILE_WALL = '#',
+    TILE_FLOOR = '.',
+    TILE_TREE = 'T',
+    TILE_ROCK = 'R',
+    TILE_ICE = '~',
+    TILE_UP = 'U',
+    TILE_DOWN = 'D',
+    TILE_HERO = '@'
+} Tile;
 
-#define TILE_WALL '#'
-#define TILE_FLOOR '.'
-#define TILE_TREE 'T'
-#define TILE_ROCK 'R'
-#define TILE_ICE '~'
-#define TILE_UP 'U'
-#define TILE_DOWN 'D'
-#define TILE_PLAYER '@'
+typedef enum
+{
+    STEP_BLOCKED,
+    STEP_MOVED,
+    STEP_DESCEND,
+    STEP_EVACUATE
+} StepResult;
 
+typedef struct Dungeon
+{
+    char** cells;
+    int width, height;
+    unsigned int depth;
+    bool sliding;
+    int slide_dx, slide_dy;
+} Dungeon;
 
+Dungeon* dungeon_create(int width, int height, unsigned int depth);
+Dungeon* dungeon_generate(unsigned int depth);
+void dungeon_destroy(Dungeon* dungeon);
+bool dungeon_can_enter(const Dungeon* dungeon, int x, int y);
+bool dungeon_stairs_reachable(const Dungeon* dungeon);
+StepResult dungeon_step(Dungeon* dungeon, Player* player, int dx, int dy);
+bool dungeon_descend(Dungeon** dungeon, Player* player, GameTime* time);
+bool adventure_allowed(const Player* player, const GameTime* time);
+void adventure_run(Dungeon** dungeon, Player* player, GameTime* time);
+#endif
