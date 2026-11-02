@@ -92,10 +92,86 @@ void inventory_check(Player* player)
     }
 }
 
-void inventory_put_item()
+void inventory_put_item(Player* player)
 {
-    if (!player_require) return;
-    //
+    if (!player_require(player)) return;
+    inventory_check(player);
+    int slot, item;
+    if (!read_int("В какой слот положить предмет?\n", 0, INVENTORY_SIZE - 1, &slot)) return;
+    for (int i = 0; i < ITEM_NAME_SIZE; i++)
+    {
+        printf("%d — %s\n", i, inventory_get_item_name(player, i));
+    }
+    if (!read_int("Какой предмет положить?\n", EMPTY, ITEM_NAME_SIZE - 1, &item)) return;
+    player->inventory[slot] = item;
+    puts("Слот заменён.");
 }
 
+void inventory_delete(Player* player)
+{
+    if (!player_require(player)) return;
+    inventory_check(player);
+    int slot;
+    if (read_int("Из какого слота выбросить предмет?\n", 0, INVENTORY_SIZE - 1, &slot))
+    {
+        player->inventory[slot] = EMPTY;
+        puts("Предмет выброшен.");
+    }
+}
 
+void inventory_favorite(Player* player)
+{
+    if (!player_require(player)) return;
+    int counts[ITEM_NAME_SIZE] = { 0 };
+    int favorite = EMPTY;
+    for (int i = 0; i < INVENTORY_SIZE; i++)
+    {
+        int id = player->inventory[i];
+        if (id > EMPTY && id < ITEM_NAME_SIZE)
+        {
+            ++counts[id];
+        }
+    }
+    for (int i = 1; i < ITEM_NAME_SIZE; i++)
+    {
+        if (counts[i] > counts[favorite])
+        {
+            favorite = i;
+        }
+    }
+    if (favorite == EMPTY)
+    {
+        puts("Инвентарь пуст.");
+    }
+    else
+    {
+        printf("Любимый ресурс: %s, встречается %d раз(а).\n", inventory_get_item_name(player, favorite), counts[favorite]);
+    }
+}
+
+void inventory_search(const Player* player)
+{
+    if (!player_require(player)) return;
+    char query[ITEM_NAME_SIZE];
+    puts("Введите название предмета для поиска:");
+    bool status = read_line(query, sizeof(query));
+    if (status == false)
+    {
+        if (feof(stdin) || ferror(stdin)) return;
+        puts("Название слишком длинное.");
+        return;
+    }
+    bool found = false;
+    for (int slot = 0; slot < INVENTORY_SIZE; slot++)
+    {
+        if (!strcmp(query, inventory_get_item_name(player, player->inventory[slot])))
+        {
+            printf("Предмет %s находится в слоте %d.\n", query, slot);
+            found = true;
+        }
+    }
+    if (!found)
+    {
+        puts("Предмет не найден в инвентаре.");
+    }
+}
