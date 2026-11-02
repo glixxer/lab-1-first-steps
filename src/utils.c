@@ -38,6 +38,7 @@ bool read_int(char* prompt, int min, int max, int* value)
         bool status = read_line(buffer, sizeof(buffer));
         if (status == false)
         {
+            if (feof(stdin) || ferror(stdin)) return false;
             puts("Ввод слишком длинный");
             continue;
         } 
