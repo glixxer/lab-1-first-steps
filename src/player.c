@@ -128,12 +128,12 @@ void inventory_favorite(Player* player)
     for (int i = 0; i < INVENTORY_SIZE; i++)
     {
         int id = player->inventory[i];
-        if (id > EMPTY && id < ITEM_NAME_SIZE)
+        if (id > EMPTY && id < MAX_ITEMS)
         {
             ++counts[id];
         }
     }
-    for (int i = 1; i < ITEM_NAME_SIZE; i++)
+    for (int i = 1; i < MAX_ITEMS; i++)
     {
         if (counts[i] > counts[favorite])
         {

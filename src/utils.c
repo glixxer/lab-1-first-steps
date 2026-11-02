@@ -140,7 +140,10 @@ bool time_wait(GameTime* time, int hours)
 
 bool time_sleep(GameTime* time)
 {
-    time->day++;
+    if (time->hour > SLEEP_HOUR)
+    {
+        time->day++;
+    }
     time->hour = MORNING_HOUR;
     return true;
 }
