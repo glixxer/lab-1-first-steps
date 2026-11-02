@@ -1,6 +1,5 @@
 #include "player.h"
 #include "utils.h"
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,7 +52,7 @@ void player_spend_stamina(Player* player, int amount)
     player->stamina = amount >= player->stamina ? 0 : player->stamina - amount;
 }
 
-void add_player_gold(Player* player, int floor)
+void player_add_gold(Player* player, int floor)
 {
     long reward = FLOOR_GOLD_MULTIPLIER * floor;
     if (reward < INT_MAX)
