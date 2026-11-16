@@ -17,7 +17,8 @@ static void print_menu(void)
         "[8] Дневник фермера\n"
         "[9] Расписание жителей\n"
         "[10] Отправиться в приключение\n"
-        "[11] Время и отдых");
+        "[11] Время и отдых\n"
+        "[12] Купить масло для фонаря");
 }
 
 void create_character(Player** player, Dungeon** dungeon)
@@ -68,12 +69,14 @@ void create_character(Player** player, Dungeon** dungeon)
     printf("Персонаж %s создан.\n", (*player)->name);
 }
 
-void character_card(const Player* player, const GameTime* time)
+void character_card(Player* player, GameTime* time)
 {
     if (!player_require(player)) return;
     printf("\n===== Фермер: %s =====\nHP: %d/%d\nВыносливость: %d/%d\nЗолото: %d\n",
         player->name, player->hp, player->max_hp, player->stamina, player->max_stamina, player->gold);
     time_print(time);
+    printf("Фонарь: %s | Масло: %d/%d\n", lantern_mode_name(&player->lantern),
+        player->lantern.oil, LANTERN_MAX_OIL);
     inventory_check(player);
 }
 
@@ -128,7 +131,7 @@ void run_menu(Player** player, Dungeon** dungeon, GameTime* time)
     {
         print_menu();
         int action;
-        if (!read_int("Действие: ", MENU_EXIT, MENU_TIME, &action)) return;
+        if (!read_int("Действие: ", MENU_EXIT, MENU_OIL, &action)) return;
         switch ((MenuAction)action)
         {
         case MENU_EXIT:
@@ -166,6 +169,9 @@ void run_menu(Player** player, Dungeon** dungeon, GameTime* time)
             break;
         case MENU_TIME:
             time_menu(*player, time);
+            break;
+        case MENU_OIL:
+            lantern_buy_oil(*player);
             break;
         }
     }

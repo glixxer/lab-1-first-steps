@@ -9,10 +9,25 @@
 #ifdef _WIN32
     #include <conio.h>
     #include <io.h>
+    #include <windows.h>
 #else
     #include <termios.h>
     #include <unistd.h>
 #endif
+
+bool terminal_enable_colors(void)
+{
+#ifdef _WIN32
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode;
+    if (!GetConsoleMode(console, &mode)) return false;
+    if (mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) return true;
+    return SetConsoleMode(console, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
+#else
+    const char* term = getenv("TERM");
+    return isatty(STDOUT_FILENO) && term != NULL && *term != '\0' && strcmp(term, "dumb") != 0;
+#endif
+}
 
 //чтение ввода
 bool read_line(char* buffer, size_t size)
@@ -37,6 +52,7 @@ bool read_int(char* prompt, int min, int max, int* value)
     while (true)
     {
         fputs(prompt, stdout);
+        fflush(stdout);
         bool status = read_line(buffer, sizeof(buffer));
         if (status == false)
         {
@@ -45,8 +61,8 @@ bool read_int(char* prompt, int min, int max, int* value)
             continue;
         } 
         char* end;
-        long parsed = strtol(buffer, &end, 10);
         errno = 0;
+        long parsed = strtol(buffer, &end, 10);
         bool has_number = end != buffer;
         while (isspace((unsigned char)*end))
             ++end;
@@ -76,6 +92,7 @@ int read_key(void)
         case L'\u044B': case L'\u042B': return 'S'; // ы, Ы
         case L'\u0432': case L'\u0412': return 'D'; // в, В
         case L'\u0439': case L'\u0419': return 'Q'; // й, Й
+        case L'\u0434': case L'\u0414': return 'L'; // д, Д
         }
         if (key == 3 || key == 26) return EOF;
         if (key > 127) return 0;
@@ -101,19 +118,20 @@ int read_key(void)
 
 bool read_command(char* command) //ввод в подземелье
 {
-    puts("W/A/S/D — движение, Q — домой (только на U). Enter не нужен.");
+    puts("W/A/S/D — движение, Q — домой (на U), L — фонарь. Enter не нужен.");
     while (true)
     {
+        fflush(stdout);
         int key = read_key();
         if (key == EOF) return false;
         if (isspace((unsigned char)key)) continue;
         key = toupper((unsigned char)key);
-        if (key != 0 && strchr("WASDQ", key))
+        if (key != 0 && strchr("WASDQL", key))
         {
             *command = (char)key;
             return true;
         }
-        puts("Неизвестная команда. Введите одну букву W, A, S, D или Q.");
+        puts("Неизвестная команда. Введите одну букву W, A, S, D, Q или L.");
     }
 }
 
@@ -232,11 +250,10 @@ void npc_shedule(GameTime* time)
     typedef struct
     {
         char name[NPC_NAME_SIZE];
-        char location[PLAYER_NAME_SIZE];
-        int found;
+        char location[NPC_NAME_SIZE];
     } NPC;
 
-    NPC npcs[NPC_LIMIT] = { "","",0 };
+    NPC npcs[NPC_LIMIT] = {0};
 
     FILE* input = fopen("data/input.txt", "r");
     if (input == NULL) input = fopen("../data/input.txt", "r");
@@ -250,45 +267,54 @@ void npc_shedule(GameTime* time)
     if (output == NULL)
     {
         printf("Не удалось открыть output.txt для записи\n");
+        fclose(input);
         return;
     }
 
-    char buffer[256];
+    char buffer[INPUT_SIZE];
     int npc_count = 0;
     while (fgets(buffer, sizeof(buffer), input) != NULL)
     {
         char name[NPC_NAME_SIZE];
-        char location[PLAYER_NAME_SIZE];
+        char location[NPC_NAME_SIZE];
         int start_hour, end_hour;
+        int consumed = 0;
 
-        sscanf(buffer, "%63[^;];%d;%d;%63[^\n]", name, &start_hour, &end_hour, location);
+        if (strchr(buffer, '\n') == NULL && !feof(input))
+        {
+            int ch;
+            while ((ch = fgetc(input)) != '\n' && ch != EOF) {}
+            continue;
+        }
+        if (sscanf(buffer, "%63[^;];%2d;%2d;%63[^\r\n]%n",
+            name, &start_hour, &end_hour, location, &consumed) != 4 ||
+            (buffer[consumed] != '\0' && buffer[consumed] != '\r' && buffer[consumed] != '\n') ||
+            start_hour < 0 || start_hour >= HOURS_PER_DAY || end_hour < 0 || end_hour > HOURS_PER_DAY)
+        {
+            continue;
+        }
+        size_t length = strlen(location);
+        if (location[length - 1] == ',') location[length - 1] = '\0';
 
-        if (time->hour > start_hour && time->hour < end_hour && npcs[npc_count].found == 0)
+        int index = 0;
+        while (index < npc_count && strcmp(npcs[index].name, name) != 0) index++;
+        if (index == npc_count)
         {
-            strcpy(npcs[npc_count].name, name);
-            strcpy(npcs[npc_count].location, location);
-            npcs[npc_count].found = 1;
+            if (npc_count == NPC_LIMIT) continue;
+            strcpy(npcs[index].name, name);
+            strcpy(npcs[index].location, "Спит дома");
+            npc_count++;
         }
-        if (strchr(location, ',') != NULL && npcs[npc_count].found == 0)
-        {
-            if (!(strcmp(npcs[npc_count - 1].name, name) == 0))
-            {
-                strcpy(npcs[npc_count].name, name);
-                strcpy(npcs[npc_count].location, "Спит дома");
-                npcs[npc_count].found = 1;
-            }
-        }
-        if (npcs[npc_count].found == 1) npc_count++;
+        bool active = start_hour <= end_hour ? time->hour >= start_hour && time->hour < end_hour
+            : time->hour >= start_hour || time->hour < end_hour;
+        if (active) strcpy(npcs[index].location, location);
     }
     fclose(input);
     fprintf(output, "==== Сводка состояния жителей на день: %d, час: %02d:00 ====\n", time->day, time->hour);
-    for (int i = 0; i < NPC_LIMIT; i++)
+    for (int i = 0; i < npc_count; i++)
     {
-        if (npcs[i].found && npcs[i].name != '\n')
-        {
-            printf("%s, локация: %s\n", npcs[i].name, npcs[i].location);
-            fprintf(output, "%s, локация: %s\n", npcs[i].name, npcs[i].location);
-        }
+        printf("%s, локация: %s\n", npcs[i].name, npcs[i].location);
+        fprintf(output, "%s, локация: %s\n", npcs[i].name, npcs[i].location);
     }
     fclose(output);
 }

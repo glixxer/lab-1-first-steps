@@ -48,14 +48,15 @@ void dungeon_destroy(Dungeon* dungeon) //освобождение памяти
     free(dungeon);
 }
 
-bool dungeon_can_enter(Dungeon* dungeon, int x, int y)
+bool dungeon_can_enter(const Dungeon* dungeon, int x, int y)
 {
     if (dungeon == NULL || x < 0 || y < 0 || x >= dungeon->width || y >= dungeon->height) return false;
     char tile = dungeon->cells[y][x];
-    return tile == TILE_FLOOR || tile == TILE_ICE || tile == TILE_UP || tile == TILE_DOWN;
+    return tile == TILE_FLOOR || tile == TILE_ICE || tile == TILE_UP ||
+        tile == TILE_DOWN || tile == TILE_CACHE;
 }
 
-bool dungeon_stairs_reachable(Dungeon* dungeon)
+bool dungeon_stairs_reachable(const Dungeon* dungeon)
 {
     size_t size = (size_t)dungeon->width * dungeon->height;
     int* queue = malloc(size * sizeof(*queue));
@@ -129,6 +130,10 @@ void fill_dungeon(Dungeon* dungeon)
             {
                 tile = TILE_ICE;
             }
+            else if (rand() % PERCENT_TOTAL < CACHE_PERCENT)
+            {
+                tile = TILE_CACHE;
+            }
             dungeon->cells[y][x] = tile;
         }
     }
@@ -193,10 +198,17 @@ StepResult dungeon_step(Dungeon* dungeon, Player* player, int dx, int dy)
     player->x = x;
     player->y = y;
     player_spend_stamina(player, STEP_STAMINA_COST);
+    lantern_step(player);
     dungeon->sliding = dungeon->cells[y][x] == TILE_ICE;
     dungeon->slide_dx = dx;
     dungeon->slide_dy = dy;
     if (player->stamina <= 0 || player->hp <= 0) return STEP_EVACUATE;
+    if (dungeon->cells[y][x] == TILE_CACHE && lantern_is_bright(&player->lantern))
+    {
+        player->gold += CACHE_GOLD;
+        dungeon->cells[y][x] = TILE_FLOOR;
+        printf("Вы нашли тайник: +%d золота.\n", CACHE_GOLD);
+    }
     return dungeon->cells[y][x] == TILE_DOWN ? STEP_DESCEND : STEP_MOVED;
 }
 
@@ -218,10 +230,10 @@ bool dungeon_descend(Dungeon** dungeon, Player* player, GameTime* time)
     return true;
 }
 
-bool adventure_allowed(Player* player, GameTime* time)
+bool adventure_allowed(const Player* player, const GameTime* time)
 {
     if (!player_require(player)) return false;
-    if (player->stamina <= 2 || player->hp <= 0)
+    if (player->stamina <= 0 || player->hp <= 0)
     {
         puts("Нет сил для похода. Восстановитесь во время сна.");
         return false;
@@ -234,21 +246,64 @@ bool adventure_allowed(Player* player, GameTime* time)
     return true;
 }
 
-void dungeon_draw(Dungeon* dungeon, Player* player, GameTime* time)
+static void set_tile_color(char tile, int brightness)
 {
+    static const unsigned char colors[][3] = {
+        [TILE_HERO]   = {255, 228, 166},
+        [TILE_WALL]   = {174, 169, 159},
+        [TILE_FLOOR]  = {168, 136, 102},
+        [TILE_TREE]   = {104, 177, 110},
+        [TILE_ROCK]   = {153, 162, 174},
+        [TILE_ICE]    = {149, 216, 246},
+        [TILE_UP]     = {201, 162, 111},
+        [TILE_DOWN]   = {185, 130,  89},
+        [TILE_CACHE]  = {255, 195,  72},
+        [TILE_HIDDEN] = { 70,  73,  82}
+    };
+    const unsigned char* rgb = colors[(unsigned char)tile];
+    printf("\x1b[38;2;%d;%d;%dm", rgb[0] * brightness / PERCENT_TOTAL,
+        rgb[1] * brightness / PERCENT_TOTAL, rgb[2] * brightness / PERCENT_TOTAL);
+}
+
+static void dungeon_draw(Dungeon* dungeon, Player* player, GameTime* time, bool use_colors)
+{
+    const Lantern* lantern = &player->lantern;
+    bool bright = lantern_is_bright(lantern);
+    int radius = LANTERN_OFF_RADIUS;
+    if (lantern->oil > 0 && lantern->mode == LIGHT_NORMAL) radius = LANTERN_NORMAL_RADIUS;
+    if (bright) radius = LANTERN_BRIGHT_RADIUS;
+    int radius_squared = radius * radius;
+    const int edge_dimming = 35;
+
     printf("\nHP: %d/%d | Выносливость: %d/%d | Золото: %d | Этаж: %u | Время: %02d:00\n",
         player->hp, player->max_hp, player->stamina, player->max_stamina,
         player->gold, dungeon->depth, time->hour);
+    printf("Фонарь: %s | Масло: %d/%d | Видимость: %d\n",
+        lantern_mode_name(lantern), lantern->oil, LANTERN_MAX_OIL, radius);
+    puts("@ — герой | ░ — темнота | #, T, R — препятствия | . — пол | ~ — лёд | U — домой | D — вниз | $ — тайник");
     printf("Подземелье. Глубина: %u. Карта: %dx%d\n", dungeon->depth, dungeon->width, dungeon->height);
-    puts("@ — герой; #, T, R — препятствия; . — пол; ~ — лёд; U — домой; D — вниз.");
     for (int y = 0; y < dungeon->height; y++)
     {
         for (int x = 0; x < dungeon->width; x++)
         {
-            putchar(x == player->x && y == player->y ? TILE_HERO : dungeon->cells[y][x]);
+            int dx = x - player->x, dy = y - player->y;
+            int distance_squared = dx * dx + dy * dy;
+            char tile = dungeon->cells[y][x];
+            if (tile == TILE_CACHE && !bright) tile = TILE_FLOOR;
+            if (distance_squared > radius_squared) tile = TILE_HIDDEN;
+            if (distance_squared == 0) tile = TILE_HERO;
+            if (use_colors)
+            {
+                int brightness = PERCENT_TOTAL;
+                if (tile != TILE_HIDDEN) brightness -= edge_dimming * distance_squared / radius_squared;
+                set_tile_color(tile, brightness);
+            }
+            if (tile == TILE_HIDDEN) fputs("░", stdout);
+            else putchar(tile);
         }
         putchar('\n');
     }
+    if (use_colors) fputs("\x1b[0m", stdout);
 }
 
 void adventure_run(Dungeon** dungeon, Player* player, GameTime* time)
@@ -263,6 +318,7 @@ void adventure_run(Dungeon** dungeon, Player* player, GameTime* time)
     }
     player->x = START_X;
     player->y = START_Y;
+    bool use_colors = terminal_enable_colors();
     while (true)
     {
         if (player->stamina <= 0 || player->hp <= 0 || time->hour == SLEEP_HOUR)
@@ -270,7 +326,7 @@ void adventure_run(Dungeon** dungeon, Player* player, GameTime* time)
             player_evacuate(player);
             break;
         }
-        dungeon_draw(*dungeon, player, time);
+        dungeon_draw(*dungeon, player, time, use_colors);
         int dx = (*dungeon)->slide_dx, dy = (*dungeon)->slide_dy;
         if ((*dungeon)->sliding)
         {
@@ -282,6 +338,11 @@ void adventure_run(Dungeon** dungeon, Player* player, GameTime* time)
             if (!read_command(&command))
             {
                 break;
+            }
+            if (command == 'L')
+            {
+                lantern_menu(player);
+                continue;
             }
             if (command == 'Q')
             {

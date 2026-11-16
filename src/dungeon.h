@@ -14,6 +14,8 @@ typedef enum
     TILE_ICE = '~',
     TILE_UP = 'U',
     TILE_DOWN = 'D',
+    TILE_CACHE = '$',
+    TILE_HIDDEN = 0,
     TILE_HERO = '@'
 } Tile;
 
